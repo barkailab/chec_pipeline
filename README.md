@@ -1,4 +1,4 @@
-# bcl2fastq
+# Pipeline to align the reads and get genome counts from Chec-Seq experiments
 The pipe.zbjline os located in **‘LAB/scripts/felix_bcl2fastq’** and consists of two scripts **dna_folder.py** and **dna_ind.py**  and a **config file** (e.g. chec_opts.txt)
 
 **dna_folder.py:** This is the wrapping script that set the configuration for the pipeline and then submits a job for each read file in the folder to the pipeline it has the following options:
