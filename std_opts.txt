@@ -1,0 +1,12 @@
+[bowtie2]
+indices = /home/labs/barkailab/felixj/RefData/yeast/cer
+args =  -p8 --end-to-end --trim-to 40 --very-sensitive
+
+[picard]
+args = TAG_DUPLICATE_SET_MEMBERS=true  STRANDED=true
+
+[genomecov]
+sam_flag =  -F0x0400 -f2
+minLen = 0
+maxLen = 5000
+args = -pc
