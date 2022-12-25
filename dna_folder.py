@@ -5,7 +5,7 @@ parser = argparse.ArgumentParser(description='settings for the file selection')
 parser.add_argument('--infolder', default=os.getcwd())
 parser.add_argument('--outfolder', default='')
 parser.add_argument('--tempfolder', default='')
-parser.add_argument('--config', default='/home/labs/barkailab/LAB/scripts/felix_bcl2fastq/std_opts.txt')
+parser.add_argument('--config', default='./chec_opts.txt')
 parser.add_argument('--ending', default='_R1_001.fastq.gz')
 parser.add_argument('--cores', default='4')
 parser.add_argument('--queue', default='molgen-q')
@@ -57,7 +57,7 @@ import sys,os,glob
 print(config['fileopts']['infolder'])
 filenames = glob.glob(config['fileopts']['infolder']+'/*'+config['fileopts']['ending']) # find all files
 cmd_ind='bsub -oo ' +config['fileopts']['outfolder']+ '/dna_folder.log -n '+args.cores +' -q ' +args.queue +' -R "span[hosts=1]" -R "rusage[mem=%s]" "python /home/labs/barkailab/LAB/scripts/felix_bcl2fastq/dna_ind.py %s %s"'
-cmdNoBsub='python /home/labs/barkailab/LAB/scripts/felix_bcl2fastq/dna_ind.py %s %s';
+cmdNoBsub='python ./dna_ind.py %s %s';
 for i in range(0,len(filenames)):	
 	filebase=os.path.basename(filenames[i])	
 	skipFile=False
