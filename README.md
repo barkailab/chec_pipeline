@@ -24,7 +24,6 @@ It creates a .outfile for each readfile that contains the 5’ position of each 
 In addition: the _stat.csv file contains the alignment and filter statistics and the config.txt contains the configuration of this run. 
 
 **Modules necessary to run the pipeline:**
-
 * samtools/1.8
 * bedtools/2.26.0
 * bowtie2/2.3.5.1
