@@ -1,0 +1,17 @@
+[prepro]
+filter = TAT
+
+[bowtie2]
+indices = /home/labs/barkailab/felixj/RefData/yeast/cer
+args =  -p8 --very-sensitive --trim-to 30 --dovetail
+checkMNase = MNAse
+
+[picard]
+args = TAG_DUPLICATE_SET_MEMBERS=true  STRANDED=true
+
+[genomecov]
+sam_flag = -f2
+minLen = 0
+maxLen = 5000
+genomeCovBin = /home/labs/barkailab/felixj/bedtools2F/bin/genomeCoverageBed
+args = -5 -fs 1
