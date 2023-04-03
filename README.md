@@ -35,4 +35,4 @@ In addition: the _stat.csv file contains the alignment and filter statistics and
 
 And then just start the pipeline from inside
 
-`python ~/../LAB/scripts/felix_bcl2fastq/dna_folder.py --memSize 8000 --queue molgen-q --infolder ./ --outfolder ./chec1`
+`python ~/../LAB/scripts/felix_bcl2fastq/dna_folder.py --memSize 8000 --queue molgen-q --config chec_opts.txt --infolder ./ --outfolder ./chec1`
