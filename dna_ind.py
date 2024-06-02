@@ -1,9 +1,12 @@
 import configparser,os,subprocess,re,sys,numpy
+# this si the pipeline processing individual samples - for better troubleshooting each commadn is first printed before it is actually run using subprocess.check_output() 
 config = configparser.ConfigParser()
 config.read(sys.argv[2])
 infile = config['fileopts']['infolder']+'/'+sys.argv[1]
+# The pipeline first checks if alignment and duplciated finding (the most ressource intensive steps) were already performed previously - IF NOT it goes into it. 
 if not (os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + '_wd.bam') or os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + 'F_wd.bam')):
-	if config.has_section('prepro'):
+	# the pipeline checks if its nececessary to preprocess/filter the data and if yes which program should be used cutadapt for ChEC-seq adapter dimers (TAT) or for ATAC adapters (ATAC)
+	if config.has_section('prepro'): 
 		prepro=0;
 		if 'lc' in config['prepro']['filter']:
 			cmd ="/home/labs/barkailab/LAB/scripts/felix_bcl2fastq/prinseq++ -fastq %s_R1_001.fastq.gz -fastq2 %s_R2_001.fastq.gz -"+config['prepro']['filter']+" -out_good %sF_R1_001.fastq -out_good2 %sF_R2_001.fastq -out_single /dev/null/ -out_single2 /dev/null/ -out_bad /dev/null/ -out_bad2 /dev/null/"
@@ -64,13 +67,15 @@ if not (os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + '_wd.b
 	tempfile = config['fileopts']['tempfolder']+'/'+sys.argv[1]
 
 	statfile = config['fileopts']['statfile']#'/home/labs/barkailab/felixj/scripts/dna/stats.xls'
-
+	# two different bowtie commands depending on the file name of the read files - "_R1_001.fastq.gz" is the NovaSeq, _1 and _2 are downloaded from the internet.
 	if 'R1' in config['fileopts']['ending']:
 		cmd = '/home/labs/barkailab/felixj/bowtie2-2.3.5.1-source/bowtie2-2.3.5.1/bowtie2 %s -x %s -1 %s_R1_001.fastq.gz -2 %s_R2_001.fastq.gz | samtools sort -o %s.bam'
 	else:
 		cmd = 'bowtie2 %s -x %s -1 %s_1.fastq.gz -2 %s_2.fastq.gz | samtools sort -o %s.bam'
 	print(cmd %(config['bowtie2']['args'],config['bowtie2']['indices'],infile,infile,tempfile))
 	bt2out = subprocess.check_output(cmd %(config['bowtie2']['args'],config['bowtie2']['indices'],infile,infile,tempfile),shell = True, stderr=subprocess.STDOUT)
+	
+	# the pipeline has the ability to find the tagged ORF by loooking for DNA fragments that on the one end align to an ORF and on the other side to a tag (e.g. MNAse)
 	if config.has_option('bowtie2','checkMNase'):
 		cmd='/home/labs/barkailab/felixj/bowtie2-2.3.5.1-source/bowtie2-2.3.5.1/bowtie2 --quiet -p8 --very-sensitive --trim-to 30 --dovetail -x /home/labs/barkailab/felixj/RefData/yeast/Sc64KLac_cDna -1 %s_R1_001.fastq.gz -2 %s_R2_001.fastq.gz | samtools view -f1 -F2 -F4 -F8 | awk \'$3 ~ /%s/\' | cut -f7 | sort | uniq -c | sort -nr |head -1' 
 		print(cmd % (infile,infile,config['bowtie2']['checkMNase']))
@@ -81,6 +86,8 @@ if not (os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + '_wd.b
 		bt2out=bt2out.decode('utf-8');
 	if config.has_section('prepro'):
 		subprocess.check_output("rm %s_R*_001.fastq.gz" %(infile),shell = True, stderr=subprocess.STDOUT)
+	
+	#bowtie2 statistics are collected
 	bt2out=list(map(int,re.findall('\d+(?= \(\d+)',bt2out)))
 	tot_reads=bt2out[0]
 	per_al=100*bt2out[2]/bt2out[0]
@@ -90,15 +97,16 @@ if not (os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + '_wd.b
 	none_al=100*(bt2out[5]-(bt2out[6]+bt2out[7]))/(2*bt2out[0])
 	al_pairs=bt2out[2]+bt2out[3]+bt2out[4];
 
+	#a modified version of picard is used to mark PCR duplicates
 	cmd_picard='java -jar /home/labs/barkailab/felixj/scripts/picard/build/libs/picard.jar MarkDuplicates %s I=%s.bam O=%s_wd.bam M=%s_dupl.tsv'
 	print(cmd_picard%(config['picard']['args'],tempfile,tempfile,tempfile))
 	picard_out=subprocess.check_output(cmd_picard%(config['picard']['args'],tempfile,tempfile,tempfile),shell = True, stderr=subprocess.STDOUT)
 
 	if (type(picard_out)==bytes):
 		picard_out=picard_out.decode('utf-8');
-
+	
+	#picard statisitcs are collected
 	picard_out=re.search('(?<=PC duplicates )(\d+) size (\d+)\[',picard_out);
-
 	if type(picard_out) is type(None):
 		per_dup=0
 		uni_pairs=al_pairs
@@ -107,12 +115,13 @@ if not (os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + '_wd.b
 		per_dup=100*int(picard_out.group(1))/al_pairs
 		uni_pairs=al_pairs-int(picard_out.group(1))
 		lib_size=picard_out.group(2);
+	
 	#remove BAM files
 	if os.path.isfile(tempfile+'_wd.bam'):
 		os.system('rm '+tempfile+'.bam')
 	else:
 		os.system('mv '+tempfile+'.bam '+tempfile+'_wd.bam')
-else:
+else: # this part of the pipeline is just run if bam files already exist so that the bowtie and picard statisitics get replaced by 0
 	print('bam file exists')
 	if config.has_option('bowtie2','checkMNase'):
 		cmd='/home/labs/barkailab/felixj/bowtie2-2.3.5.1-source/bowtie2-2.3.5.1/bowtie2 --quiet -p8 --very-sensitive --trim-to 30 --dovetail -x /home/labs/barkailab/felixj/RefData/yeast/Sc64KLac_cDna -1 %s_R1_001.fastq.gz -2 %s_R2_001.fastq.gz | samtools view -f1 -F2 -F4 -F8 | awk \'$3 ~ /%s/\' | cut -f7 | sort | uniq -c | sort -nr |head -1' 
@@ -136,17 +145,19 @@ else:
 	tempfile = config['fileopts']['tempfolder']+'/'+sys.argv[1]
 	statfile = config['fileopts']['statfile']
 	
+#median insertsize is calculated using samtools
 cmd_insertsize='samtools stats -f 0x002 -F0x0400 %s_wd.bam | grep ^IS | cut -f2,3'
 insertsize_out=subprocess.check_output(cmd_insertsize%(tempfile),shell = True, stderr=subprocess.STDOUT)
-
 if (type(insertsize_out)==bytes):
 	insertsize_out=insertsize_out.decode('utf-8');
-
 insertsize_out=(re.findall('\d+(?=\n)',insertsize_out))
 insertsize_out=list(map(int,insertsize_out))
 if float(config['genomecov']['minLen'])<1 and float(config['genomecov']['minLen'])>0:
 	print((sum(numpy.cumsum(insertsize_out)<(float(config['genomecov']['minLen'])*sum(insertsize_out)))))
 insertsize_out=(sum(numpy.cumsum(insertsize_out)<(0.5*sum(insertsize_out)))) #calculate median size from histogram
+
+
+## the pipeline has the option to run some matlab scripts to filter the aligned fragments using matlab... but its not really used (so just move to else)
 if config.has_option('genomecov','preMat'):
 	matCmd='matlab -nodisplay -r "filterBAM2 %s  ;exit"'%tempfile
 	print(matCmd)
@@ -154,6 +165,7 @@ if config.has_option('genomecov','preMat'):
 	cmd = 'samtools view -h %s %s_wd.bam | awk -F "\\t" \'{if ((($9^2>=%s^2)&&($9^2<=%s^2)&&'+config['genomecov']['addconstraint']+') || ($1~"@HD|@PG") || (($1~"@SQ")&&($2~"NC_001")) )  print $_}\' | samtools view -c'
 	woConstr_pairs=0;
 else:
+	## usually the pipeline align allr eads in between the defined sizes- however its possible to add additonal constrains based on the alignment scores ($_~"AS:i:0"||$_~"YS:i:0"))
 	if config.has_option('genomecov','addconstraint'):
 		cmd = 'samtools view -h %s %s_wd.bam | awk -F "\\t" \'{if ((($9^2>=%s^2)&&($9^2<=%s^2)) || ($1~"@"))  print $_}\' | grep -v "XS:"|samtools view -c';
 		woConstr_pairs=subprocess.check_output(cmd %(config['genomecov']['sam_flag'],tempfile,config['genomecov']['minLen'],config['genomecov']['maxLen']),shell = True, stderr=subprocess.STDOUT)
@@ -162,14 +174,18 @@ else:
 		woConstr_pairs=int(woConstr_pairs)/2;
 		#cmd = 'samtools view -h %s %s_wd.bam | awk -F "\\t" \'{if ((($9^2>=%s^2)&&($9^2<=%s^2)&&'+config['genomecov']['addconstraint']+') || ($1~"@HD|@PG") || (($1~"@SQ")&&($2~"NC_001")) )  print $_}\' |grep -v "XS:"| samtools view -c'
 		cmd = 'samtools view -h %s %s_wd.bam | awk -F "\\t" \'{if ((($9^2>=%s^2)&&($9^2<=%s^2)&& ($_~"AS:i:0"||$_~"YS:i:0")) || ($1~"@HD|@PG") || (($1~"@SQ")))  print $_}\' | samtools view -c'
-	else:
+	else: ##this is the most commonly used command.
 		cmd = 'samtools view -h %s %s_wd.bam | awk -F "\\t" \'{if ((($9^2>=%s^2)&&($9^2<=%s^2)) || ($1~"@"))  print $_}\' | samtools view -c'
+## before the actual coverage calculation is done - first the number of reads that go into it is calcualted.
+
 print(cmd %(config['genomecov']['sam_flag'],tempfile,config['genomecov']['minLen'],config['genomecov']['maxLen']))
 uni_pairs=subprocess.check_output(cmd %(config['genomecov']['sam_flag'],tempfile,config['genomecov']['minLen'],config['genomecov']['maxLen']),shell = True, stderr=subprocess.STDOUT)
 if (type(uni_pairs)==bytes):
 	uni_pairs=uni_pairs.decode('utf-8');
 uni_pairs=int(uni_pairs)/2
 
+
+## now the same thing happens just with that instead of counting the reads in the end "samtools view -c" they are piped into genomeCOverage "| samtools view -b | %s %s -d  -ibam - | cut -f3 >%s.out'"
 if config.has_option('genomecov','genomeCovBin'):
 	genomeCovBin=config['genomecov']['genomeCovBin']
 else:
@@ -184,6 +200,8 @@ else:
 		cmd = 'samtools view -h %s %s_wd.bam | awk -F "\\t" \'{if ((($9^2>=%s^2)&&($9^2<=%s^2)) || ($1~"@"))  print $_}\' | samtools view -b | %s %s -d  -ibam - | cut -f3 >%s.out'
 print(cmd %(config['genomecov']['sam_flag'],tempfile,config['genomecov']['minLen'],config['genomecov']['maxLen'],genomeCovBin,config['genomecov']['args'],outfile))
 gcout=subprocess.check_output(cmd %(config['genomecov']['sam_flag'],tempfile,config['genomecov']['minLen'],config['genomecov']['maxLen'],genomeCovBin,config['genomecov']['args'],outfile),shell = True, stderr=subprocess.STDOUT)
+
+## all the collected stats are written into a stats file that combines all samples.
 if config.has_section('prepro'):
 	statLine='%s\t%s\t%s\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\t%s\t%.1f\t%.1f\t%s\t%s';
 	statline = statLine%(sys.argv[1],prepro,tot_reads,per_al,mul_al,dis_al,mate_al,none_al,al_pairs,per_dup,uni_pairs,lib_size,insertsize_out)
