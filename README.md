@@ -4,9 +4,13 @@ The pipe.zbjline os located in **‘LAB/scripts/felix_bcl2fastq’** and consist
 **dna_folder.py:** This is the wrapping script that set the configuration for the pipeline and then submits a job for each read file in the folder to the pipeline it has the following options:
 
 *--infolder* path to the folder containing the read files (R1 and R2)
+
 *--outfolder* path to the output directory
+
 *--config* path to the options file (if it is inside the felix_bcl2fastq folder, the name is enough, e.g. chec_opts.txt)
+
 *--queue wexac* queue you want to submit the individual jobs (preset: molgen-q)
+
 *--memSize* Ram used for the pipeline (preset: 4000 MB, needs tro be increased for large files >3Mio reads)
 
 **dna_ind.py:** This file contains the real pipeline and usually doesn’t need to be run if individual samples fail.
