@@ -11,11 +11,12 @@ The pipe.zbjline os located in **‘LAB/scripts/felix_bcl2fastq’** and consist
 
 *--memSize* Ram used for the pipeline (preset: 4000 MB, needs tro be increased for large files >3Mio reads)
 
-**dna_ind.py:**This file contains the real pipeline and usually doesn’t need to be run if individual samples fail.
+**dna_ind.py:** This file contains the real pipeline and usually doesn’t need to be run if individual samples fail.
 
 - First cutadapt to remove adapters
 
-- Bowtie2 for alignmentPicard (modified) to detect pcr duplicates
+- Bowtie2 for alignment
+- Picard (modified) to detect pcr duplicates
 - Samtools to filter and sort reads
 - bedtools to align to the genome
 
