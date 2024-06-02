@@ -15,11 +15,11 @@ The pipe.zbjline os located in **‘LAB/scripts/felix_bcl2fastq’** and consist
 
 **dna_ind.py:** This file contains the real pipeline and usually doesn’t need to be run if individual samples fail.
 
-- Cutadapt to remove adapters
-- Bowtie2 for alignment [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- Picard (modified) to detect pcr duplicates
-- Samtools to filter and sort reads
-- bedtools to align to the genome
+- [CutAdapt](https://cutadapt.readthedocs.io/en/stable/guide.html) to remove adapters
+- [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml) for alignment 
+- [Picard](https://gatk.broadinstitute.org/hc/en-us/articles/360037052812-MarkDuplicates-Picard) (modified) to detect pcr duplicates
+- [Samtools](https://www.htslib.org/doc/samtools.html) to filter and sort reads
+- [bedtools\genomecoverage](https://bedtools.readthedocs.io/en/latest/content/tools/genomecov.html) to map onto the genome
 
 It creates a .outfile for each readfile that contains the 5’ position of each read aligned to the genome (12 mio bases long 16Chr + ChrM)
 
