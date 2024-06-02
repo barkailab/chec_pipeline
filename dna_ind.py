@@ -25,6 +25,8 @@ if not (os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + '_wd.b
 			cmd="cutadapt -b %s -B %s -j 16 -o %sF_R1_001.fastq.gz -p %sF_R2_001.fastq.gz %s_R1_001.fastq.gz %s_R2_001.fastq.gz -O 10 --pair-filter=any -m 15 --action=trim" # m was 18
 			print(cmd %(adapter,adapter,infile,infile,infile,infile))
 			psout=subprocess.check_output(cmd %(adapter,adapter,infile,infile,infile,infile),shell = True, stderr=subprocess.STDOUT) #
+			
+			# extract and calculate the statisitcs
 			print(psout)
 			if (type(psout)==bytes):
 				psout=psout.decode('utf-8');	
@@ -67,6 +69,7 @@ if not (os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + '_wd.b
 	tempfile = config['fileopts']['tempfolder']+'/'+sys.argv[1]
 
 	statfile = config['fileopts']['statfile']#'/home/labs/barkailab/felixj/scripts/dna/stats.xls'
+	
 	# two different bowtie commands depending on the file name of the read files - "_R1_001.fastq.gz" is the NovaSeq, _1 and _2 are downloaded from the internet.
 	if 'R1' in config['fileopts']['ending']:
 		cmd = '/home/labs/barkailab/felixj/bowtie2-2.3.5.1-source/bowtie2-2.3.5.1/bowtie2 %s -x %s -1 %s_R1_001.fastq.gz -2 %s_R2_001.fastq.gz | samtools sort -o %s.bam'
@@ -75,6 +78,16 @@ if not (os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + '_wd.b
 	print(cmd %(config['bowtie2']['args'],config['bowtie2']['indices'],infile,infile,tempfile))
 	bt2out = subprocess.check_output(cmd %(config['bowtie2']['args'],config['bowtie2']['indices'],infile,infile,tempfile),shell = True, stderr=subprocess.STDOUT)
 	
+	#bowtie2 statistics are collected
+	bt2out=list(map(int,re.findall('\d+(?= \(\d+)',bt2out)))
+	tot_reads=bt2out[0]
+	per_al=100*bt2out[2]/bt2out[0]
+	mul_al=100*bt2out[3]/bt2out[0]
+	dis_al=100*bt2out[4]/bt2out[0]
+	mate_al=100*(bt2out[6]+bt2out[7])/bt2out[0]
+	none_al=100*(bt2out[5]-(bt2out[6]+bt2out[7]))/(2*bt2out[0])
+	al_pairs=bt2out[2]+bt2out[3]+bt2out[4];
+
 	# the pipeline has the ability to find the tagged ORF by loooking for DNA fragments that on the one end align to an ORF and on the other side to a tag (e.g. MNAse)
 	if config.has_option('bowtie2','checkMNase'):
 		cmd='/home/labs/barkailab/felixj/bowtie2-2.3.5.1-source/bowtie2-2.3.5.1/bowtie2 --quiet -p8 --very-sensitive --trim-to 30 --dovetail -x /home/labs/barkailab/felixj/RefData/yeast/Sc64KLac_cDna -1 %s_R1_001.fastq.gz -2 %s_R2_001.fastq.gz | samtools view -f1 -F2 -F4 -F8 | awk \'$3 ~ /%s/\' | cut -f7 | sort | uniq -c | sort -nr |head -1' 
@@ -86,16 +99,6 @@ if not (os.path.isfile(config['fileopts']['tempfolder']+'/'+sys.argv[1] + '_wd.b
 		bt2out=bt2out.decode('utf-8');
 	if config.has_section('prepro'):
 		subprocess.check_output("rm %s_R*_001.fastq.gz" %(infile),shell = True, stderr=subprocess.STDOUT)
-	
-	#bowtie2 statistics are collected
-	bt2out=list(map(int,re.findall('\d+(?= \(\d+)',bt2out)))
-	tot_reads=bt2out[0]
-	per_al=100*bt2out[2]/bt2out[0]
-	mul_al=100*bt2out[3]/bt2out[0]
-	dis_al=100*bt2out[4]/bt2out[0]
-	mate_al=100*(bt2out[6]+bt2out[7])/bt2out[0]
-	none_al=100*(bt2out[5]-(bt2out[6]+bt2out[7]))/(2*bt2out[0])
-	al_pairs=bt2out[2]+bt2out[3]+bt2out[4];
 
 	#a modified version of picard is used to mark PCR duplicates
 	cmd_picard='java -jar /home/labs/barkailab/felixj/scripts/picard/build/libs/picard.jar MarkDuplicates %s I=%s.bam O=%s_wd.bam M=%s_dupl.tsv'
