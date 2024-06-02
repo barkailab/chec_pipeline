@@ -15,8 +15,8 @@ The pipe.zbjline os located in **‘LAB/scripts/felix_bcl2fastq’** and consist
 
 **dna_ind.py:** This file contains the real pipeline and usually doesn’t need to be run if individual samples fail.
 
-- First cutadapt to remove adapters
-- Bowtie2 for alignment
+- Cutadapt to remove adapters
+- Bowtie2 for alignment [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - Picard (modified) to detect pcr duplicates
 - Samtools to filter and sort reads
 - bedtools to align to the genome
